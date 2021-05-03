@@ -1,0 +1,322 @@
+/**
+ * Handles a sequence of 40 sprites representing the same image rotated through
+ * different angles. Provides functions for moving the sprite up, down, left and
+ * right as well as rotating it. Uses bitwise manipulation of the sprite data to
+ * allow moving the image horizontally one pixel at a time.
+ */
+ class Sprite {
+    field int x;
+    field int y;
+    field int a;
+
+    field Array sprites;
+    field Array spriteOffsets;
+
+    constructor Sprite new(int _x, int _y, int _a) {
+        var int i;
+
+        let x = _x;
+        let y = _y;
+
+        // our sprite array has two elements (left and right words)
+        // per image, so double the index specified. if we then always
+        // manipulate {a} with a stride of 2, it will simplify indexing
+        let a = _a * 2;
+
+        let sprites = Sprites.load();
+        let spriteOffsets = Array.new(40);
+
+        while (i < 40) {
+            let spriteOffsets[i] = 0;
+            let i = i + 1;
+        }
+
+        do draw(true);
+
+        return this;
+    }
+
+    /**
+     * getters
+     */
+    method int getX() { return x; }
+    method int getY() { return y; }
+    method int getHeading() { return a / 2; }
+
+    /**
+     * erase the sprite and redraw one line up
+     */
+    method boolean moveUp() {
+        do draw(false);
+        let y = y - 1;
+        return draw(true);
+    }
+
+    /**
+     * erase the sprite and redraw one line down
+     */
+    method boolean moveDown() {
+        do draw(false);
+        let y = y + 1;
+        return draw(true);
+    }
+
+    /**
+     * twiddle the bits of the selected sprite to move the image right one pixel
+     */
+    method boolean moveRight() {
+        do draw(false);
+
+        // increment our x co-ordinate since we're moving right
+        let x = x + 1;
+
+        do shiftRight();
+        do swapSides();
+
+        do updateOffset();
+        return draw(true);
+    }
+
+    /**
+     * twiddle the bits of the selected sprite to move the image left one pixel
+     */
+    method boolean moveLeft() {
+        do draw(false);
+
+        do swapSides();
+        do shiftLeft();
+
+        // decrement our x co-ordinate since we're moving right
+        let x = x - 1;
+
+        do updateOffset();
+        return draw(true);
+    }
+
+    /**
+     * select the next sprite in the sequence
+     */
+    method boolean rotateRight() {
+        var int currentOffset;
+
+        let currentOffset = getOffset();
+        do draw(false);
+
+        let a = a + 2;
+        if (a > 78) {
+            let a = 0;
+        }
+
+        do shiftToOffset(currentOffset);
+        return draw(true);
+    }
+
+    /**
+     * select the previous sprite in the sequence
+     */
+    method boolean rotateLeft() {
+        var int currentOffset;
+
+        let currentOffset = getOffset();
+        do draw(false);
+
+        let a = a - 2;
+        if (a < 0) {
+            let a = 78;
+        }
+
+        do shiftToOffset(currentOffset);
+        return draw(true);
+    }
+
+    /**
+     * update the newly selected sprite to have the correct offset
+     * within the 16-bit cycle, depending on our current position
+     */
+    method void shiftToOffset(int targetOffset) {
+        var int spriteOffset;
+
+        let spriteOffset = getOffset();
+        while (spriteOffset < targetOffset) {
+            do shiftRight();
+            let spriteOffset = spriteOffset + 1;
+        }
+
+        while (spriteOffset > targetOffset) {
+            do shiftLeft();
+            let spriteOffset = spriteOffset - 1;
+        }
+
+        do updateOffset();
+
+        return;
+    }
+
+    /**
+     * shift the pixels over. we don't need to worry about losing bits at the
+     * right-hand edge because by that time the whole image will have moved over,
+     * it will have been a full cycle of 16 and we'll have swapped R over to L
+     */
+    method void shiftRight() {
+        var Array spriteL, spriteR;
+        var int i;
+
+        let spriteL = sprites[a];
+        let spriteR = sprites[a+1];
+
+        while (i < 16) {
+            let spriteR[i] = spriteR[i] * 2;
+            if (spriteL[i] < 0) {
+                let spriteR[i] = spriteR[i] | 1;
+            }
+            let spriteL[i] = spriteL[i] * 2;
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+
+    /**
+     * shift the pixels over. we don't need to worry about losing bits at the
+     * left-hand edge because by that time the whole image will have moved over,
+     * it will have been a full cycle of 16 and we'll have swapped R over to L
+     */
+    method void shiftLeft() {
+        var Array spriteL, spriteR;
+        var int i;
+
+        let spriteL = sprites[a];
+        let spriteR = sprites[a+1];
+
+        while (i < 16) {
+            if (spriteL[i] < 0) {
+                let spriteL[i] = ((spriteL[i] & 32767) / 2) + 16384;
+            } else {
+                let spriteL[i] = spriteL[i] / 2;
+            }
+
+            if ((spriteR[i] & 1) > 0) {
+                let spriteL[i] = spriteL[i] | ((-32767) - 1);
+            }
+
+            if (spriteR[i] < 0) {
+                let spriteR[i] = ((spriteR[i] & 32767) / 2) + 16384;
+            } else {
+                let spriteR[i] = spriteR[i] / 2;
+            }
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+
+    /**
+     * if we've hit a word boundary, all the image data will be in
+     * the right-hand block now, so swap over the pointers. this way
+     * we can keep using the assumption that we don't need to worry
+     * about losing bits off the left or right hand sides of our two-
+     * word block, and the starting position for rendering is always
+     * x mod 16
+     */
+    method void swapSides() {
+        var Array tmp;
+
+        if (((x / 16) * 16) = x) {
+            let tmp = sprites[a];
+            let sprites[a] = sprites[a+1];
+            let sprites[a+1] = tmp;
+        }
+
+        return;
+    }
+
+    /**
+     * get the last recorded offset of the currently selected sprite
+     */
+    method int getOffset() {
+        return spriteOffsets[a / 2];
+    }
+
+    /**
+     * record a new offset for the currently selected sprite
+     */
+    method void updateOffset() {
+        let spriteOffsets[a / 2] = x - ((x / 16) * 16);
+        return;
+    }
+
+    /**
+      * either shows or hides the sprite on the screen
+      * returns true if the drawing was successful,
+      * false if there was a collision
+     */
+    method boolean draw(boolean show) {
+        // where we're going to render the image
+        var int screenLocation, i;
+
+        // have we crashed into something?
+        var boolean collision;
+
+        // the current selected sprite data based on which
+        // angle we're heading
+        var Array spriteL, spriteR;
+
+        // as we iterate over each row of pixels in the sprite,
+        // these will hold the current image on the screen that
+        // we need to combine with the sprite
+        var Array existingPixelsL, existingPixelsR;
+
+        let spriteL = sprites[a];
+        let spriteR = sprites[a+1];
+
+        let screenLocation = 16384 // start offset of the screen memory map
+            + (y * 32) // plus 32 words for each row of pixels down the screen
+            + (x / 16); // plus 1 word for each set of 16 pixels across the screen
+
+        while (i < 16) {
+            let existingPixelsL = Memory.peek(screenLocation);
+            let existingPixelsR = Memory.peek(screenLocation+1);
+
+            if (show) {
+                // show by combining the sprite pixels with the existing pixels
+                if (~((existingPixelsL + spriteL[i]) = (existingPixelsL | spriteL[i]))) {
+                    let collision = true;
+                }
+
+                if (~((existingPixelsR + spriteR[i]) = (existingPixelsR | spriteR[i]))) {
+                    let collision = true;
+                }
+
+                do Memory.poke(screenLocation, existingPixelsL | spriteL[i]);
+                do Memory.poke(screenLocation + 1, existingPixelsR | spriteR[i]);
+            } else {
+                // hide by subtracting the sprite pixels from the existing pixels
+                do Memory.poke(screenLocation, existingPixelsL & ~spriteL[i]);
+                do Memory.poke(screenLocation + 1, existingPixelsR & ~spriteR[i]);
+            }
+
+            let screenLocation = screenLocation + 32; // select the next row of pixels
+
+            let i = i + 1;
+        }
+        return ~collision;
+    }
+
+    method void dispose() {
+        var int i;
+        var Array sprite;
+
+        let i = 0;
+        while (i < 80) {
+            let sprite = sprites[i];
+            do sprite.dispose();
+            let i = i + 1;
+        }
+        do sprites.dispose();
+        do spriteOffsets.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+}

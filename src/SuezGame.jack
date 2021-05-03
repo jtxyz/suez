@@ -1,0 +1,158 @@
+/**
+ * The SuezGame class is responsible for rendering the static or
+ * mostly-static elements of the game: the controls, the map and
+ * the victory or defeat screens.
+ *
+ * It also provides the main game loop and maps the user input
+ * onto the methods exposed by the Ship class.
+ */
+class SuezGame {
+    field Ship ship;
+
+    constructor SuezGame new() {
+        do initDisplay();
+        let ship = Ship.new(0, 234, 9);
+        return this;
+    }
+
+    /**
+     * main loop: read input and pass commands to the ship until a
+     * terminal condition is detected
+     */
+    method int run(int highScore) {
+        var char key, oldKey;
+        var int result, distance;
+
+        while (result = 0) {
+            let key = Keyboard.keyPressed();
+
+            if (~(key = oldKey)) {
+                // wasd
+                if (key = 87) { do ship.increasePower(); }
+                if (key = 83) { do ship.decreasePower(); }
+                if (key = 65) { do ship.rudderPort(); }
+                if (key = 68) { do ship.rudderStarboard(); }
+
+                // arrow keys
+                if (key = 131) { do ship.increasePower(); }
+                if (key = 133) { do ship.decreasePower(); }
+                if (key = 130) { do ship.rudderPort(); }
+                if (key = 132) { do ship.rudderStarboard(); }
+            }
+
+            // result is 0, except if a winning or losing condition is detected
+            let result = ship.update();
+            if (~(result = 0)) {
+                let distance = ship.getDistanceTraveled();
+                do drawAlert(result = 2, distance, highScore);
+            }
+
+            let oldKey = key;
+            do Sys.wait(50);
+        }
+
+        return distance;
+    }
+
+    /**
+     * draw the static content on the screen: the map, the instructions,
+     * credits and the fixed parts of the controls
+     */
+    method void initDisplay() {
+        // erase any existing content
+        do Screen.setColor(0);
+        do Screen.drawRectangle(0, 0, 511, 255);
+
+        // draw the map
+        do Screen.setColor(1);
+        do Screen.drawLine(0, 232, 150, 220);
+        do Screen.drawLine(150, 220, 240, 179);
+        do Screen.drawLine(240, 179, 300, 98);
+        do Screen.drawLine(300, 98, 320, 47);
+        do Screen.drawLine(320, 47, 325, 0);
+
+        do Screen.drawLine(0, 250, 158, 238);
+        do Screen.drawLine(158, 238, 253, 195);
+        do Screen.drawLine(253, 195, 315, 107);
+        do Screen.drawLine(315, 107, 335, 52);
+        do Screen.drawLine(335, 52, 340, 0);
+
+        // print the text
+        do printLiteral(1, 1, "Steer through the Suez Canal");
+        do printLiteral(3, 1, "Try your hand at traversing one of");
+        do printLiteral(4, 1, "the most highly trafficked nautical");
+        do printLiteral(5, 1, "thoroughfares in the world.");
+
+        do printLiteral(7, 1, "Use the arrow keys or [wasd] to");
+        do printLiteral(8, 1, "control power and rudder angle.");
+
+        do printLiteral(10, 1, "Make it to the top of the");
+        do printLiteral(11, 1, "map to win!");
+
+        do printLiteral(15, 1, "Inspired by:");
+        do printLiteral(16, 3, "https://edition.cnn.com/");
+        do printLiteral(17, 3, "interactive/2021/03/");
+        do printLiteral(18, 3, "cnnix-steership/");
+
+        // draw the control panel
+        do Screen.drawLine(400, 0, 400, 255);
+
+        do printLiteral(3, 54, "Rudder");
+        do printLiteral(5, 56, "0");
+
+        do printLiteral(10, 54, "Power");
+        do printLiteral(12, 56, "0");
+
+        return;
+    }
+
+    /**
+     * inform the player of victory or defeat, and wait for acknowledgement
+     */
+    method void drawAlert(boolean success, int distance, int highScore) {
+        var char c;
+
+        do Screen.setColor(0);
+        do Screen.drawRectangle(0, 0, 284, 100);
+        do Screen.drawRectangle(0, 100, 254, 131);
+
+        if (success) {
+            do printLiteral(3, 3, "Congratulations!");
+        } else {
+            do printLiteral(3, 3, "Collision!");
+        }
+
+        do printLiteral(5, 3, "You scored: ");
+        do Output.printInt(distance);
+
+        do printLiteral(6, 3, "High score: ");
+        do Output.printInt(highScore);
+
+        do printLiteral(8, 3, "Press space or R to try again.");
+
+
+        while (~((c = 32) | (c = 82))) {
+            do Output.moveCursor(9, 3);
+            let c = Keyboard.readChar();
+        }
+
+        return;
+    }
+
+    /**
+     * Utility method to print a string at a particular location
+     * and then dispose of its memory
+     */
+    method void printLiteral(int i, int j, String message) {
+        do Output.moveCursor(i, j);
+        do Output.printString(message);
+        do message.dispose();
+        return;
+    }
+
+    method void dispose() {
+        do ship.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+}

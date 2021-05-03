@@ -1,0 +1,182 @@
+/**
+ * The Ship class exposes methods allowing the ship's controls to be manipulated.
+ * It also holds a reference to a Sprite instance that represents the ship
+ * as it is rendered on the screen.
+ * This class is resposible for simulating the movement of the ship, and
+ * it uses the methods exposed by the Sprite to keep the display in sync.
+ */
+class Ship {
+    field Sprite sprite;
+
+    field int x;
+    field int y;
+    field int heading;
+
+    field int vX;
+    field int vY;
+
+    field int power;
+    field int rudder;
+
+    constructor Ship new(int _x, int _y, int _heading) {
+        let sprite = Sprite.new(_x, _y, _heading);
+
+        let x = _x * 32;
+        let y = _y * 32;
+        let heading = _heading * 100;
+
+        let vX = 0;
+        let vY = 0;
+        let power = 0;
+        let rudder = 0;
+
+        return this;
+    }
+
+    method void increasePower() {
+        if (power < 10) {
+            let power = power + 1;
+            do Output.moveCursor(12, 56);
+            do Output.printInt(power);
+            do Output.printChar(32);
+            do Output.printChar(32);
+        }
+        return;
+    }
+
+    method void decreasePower() {
+        if (power > -10) {
+            let power = power - 1;
+            do Output.moveCursor(12, 56);
+            do Output.printInt(power);
+            do Output.printChar(32);
+            do Output.printChar(32);
+        }
+        return;
+    }
+
+    method void rudderPort() {
+        if (rudder > -10) {
+            let rudder = rudder - 1;
+            do Output.moveCursor(5, 56);
+            do Output.printInt(rudder);
+            do Output.printChar(32);
+            do Output.printChar(32);
+        }
+        return;
+    }
+
+    method void rudderStarboard() {
+        if (rudder < 10) {
+            let rudder = rudder + 1;
+            do Output.moveCursor(5, 56);
+            do Output.printInt(rudder);
+            do Output.printChar(32);
+            do Output.printChar(32);
+        }
+        return;
+    }
+
+    /**
+     * this method simulates the effect of the ship's current velocity,
+     * as well as the input from the controls.
+     *
+     * the logic contains lots of constants for adjusting the responsiveness
+     * of the controls
+     *
+     * the return code indicates the reuslt: 0: nothing, 1: collision, 2: victory!
+     */
+    method int update() {
+        var int h, deltaVX, deltaVY, deltaH;
+
+        let heading = heading + rudder;
+        if (heading > 3999) {
+            let heading = 0;
+        }
+        if (heading < 0) {
+            let heading = 3999;
+        }
+
+        let h = heading / 100;
+
+        let deltaVX = (power * Angles.sin(h)) / 8;
+        if (((deltaVX > 0) & (vX < 16384)) | ((deltaVX < 0) & (vX > -16384))) {
+            let vX = vX + deltaVX;
+        }
+        let x = x + (vX / 1200);
+
+        let deltaVY = (power * -Angles.cos(h)) / 8;
+        if (((deltaVY > 0) & (vY < 16384)) | ((deltaVY < 0) & (vY > -16384))) {
+            let vY = vY + deltaVY;
+        }
+        let y = y + (vY / 1200);
+
+        // if you made it to the top of the screen, you won!
+        if (y < 20) {
+            return 2;
+        }
+
+        // if you make it out of bounds otherwise, that's a crash
+        if ((x < 0) | (x > 15359) | (y < 0) | (y > 7679)) {
+            return 1;
+        }
+
+
+        // ensure the sprite's position matches our new calculated values
+        while (sprite.getX() < (x / 32)) {
+            if (~sprite.moveRight()) {
+                return 1;
+            }
+        }
+
+        while (sprite.getX() > (x / 32)) {
+            if (~sprite.moveLeft()) {
+                return 1;
+            }
+        }
+
+        while (sprite.getY() < (y / 32)) {
+            if (~sprite.moveDown()) {
+                return 1;
+            }
+        }
+
+        while (sprite.getY() > (y / 32)) {
+            if (~sprite.moveUp()) {
+                return 1;
+            }
+        }
+
+        // decide whether we should turn left or right
+        let deltaH = h - sprite.getHeading();
+        if (deltaH < 0) {
+            let deltaH = deltaH + 40;
+        }
+
+        if (deltaH > 20) {
+            while (~(h = sprite.getHeading())) {
+                if (~sprite.rotateLeft()) {
+                    return 1;
+                }
+            }
+        } else {
+            while (~(h = sprite.getHeading())) {
+                if (~sprite.rotateRight()) {
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    method int getDistanceTraveled() {
+        return (x + (7680 - y)) / 32;
+    }
+
+    method void dispose() {
+        do sprite.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+}

@@ -1,0 +1,24 @@
+/**
+ * Entry point, this reinitialises the state after
+ * each game and keeps track of the high score.
+ */
+class Main {
+    function void main() {
+        var int highScore, newScore;
+        var SuezGame game;
+
+        let highScore = 0;
+
+        do Angles.init();
+
+        while (true) {
+            let game = SuezGame.new();
+            let newScore = game.run(highScore);
+            do game.dispose();
+            if (newScore > highScore) {
+                let highScore = newScore;
+            }
+        }
+        return;
+    }
+ }

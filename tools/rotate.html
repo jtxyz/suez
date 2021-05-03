@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boop</title>
+    <style>
+        canvas {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ships"></div>
+    <div>
+        <pre id="code"></pre>
+    </div>
+    <script>
+        const ships = document.getElementById('ships');
+        const code = document.getElementById('code');
+
+        const originalCanvas = document.createElement("canvas"),
+            originalContext = originalCanvas.getContext("2d");
+
+        const myImageData = originalContext.createImageData(16, 16);
+        const pixels = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ];
+
+        pixels.flat().forEach((e, i) => {
+            if (e) {
+                myImageData.data[(i * 4) + 3] = 255;
+            }
+        });
+
+        originalContext.putImageData(myImageData, 0, 0);
+
+        const render = (angle, n) => {
+            const newCanvas = document.createElement("canvas"),
+                newCtx = newCanvas.getContext("2d");
+
+            newCanvas.width = 16;
+            newCanvas.height = 16;
+            newCtx.imageSmoothingEnabled = false;
+
+            newCtx.translate(8, 8);
+            newCtx.rotate(angle * Math.PI / 180.0);
+            newCtx.translate(-8, -8);
+
+            newCtx.drawImage(originalCanvas, 0, 0);
+            ships.appendChild(newCanvas);
+
+            const span = document.createElement('span')
+            span.innerText = "" + angle;
+            ships.appendChild(span)
+
+            const data = newCtx.getImageData(0, 0, 16, 16).data;
+
+            let rows = []
+
+            for (i = 0; i < 16; i++) {
+                let val = 0
+                for (j = 0; j < 16; j++) {
+                    val |= (data[(i * 16 * 4) + (j * 4) + 3] === 255 ? 1 : 0) << j;
+                }
+                rows.push(val);
+            }
+
+            code.innerText += `
+let sprites[${n}] = Sprites.load(
+    ${rows.slice(0, 8).join(', ')},
+    ${rows.slice(8, 16).join(', ')});
+`
+        }
+
+        const angles = [0, 9, 18, 25, 36, 46, 54, 61, 72, 81]
+        let n = 0;
+        for (let i = 0; i < 4; i++) {
+            for (let a of angles) {
+                let angle = a + (i * 90);
+                render(angle, n++);
+            }
+        }
+    </script>
+    <script>
+        const r = (a) => ({
+            x: Math.round(Math.sin(0.5 * Math.PI * a) * 100),
+            y: Math.round(Math.cos(0.5 * Math.PI * a) * 100)
+        })
+        const k = new Array(40).fill().map((e, i) => i / 10).map(r);
+        console.log(k);
+    </script>
+</body>
+
+</html>

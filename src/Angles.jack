@@ -1,0 +1,67 @@
+/**
+ * The Angles class provides some static lookup tables and helper functions
+ * which are used for calculating the x and y components of the
+ * trajectory when moving the ship
+ */
+class Angles {
+    static Array _sin;
+    static Array _cos;
+
+    function int cos(int a) {
+        return _cos[a];
+    }
+
+    function int sin(int a) {
+        return _sin[a];
+    }
+
+    function void init() {
+        let _sin = Array.new(40);
+        let _cos = Array.new(40);
+
+        do Angles.load(_sin, 0,
+            0, 16, 31, 45, 59, 71, 81, 89, 95, 99);
+
+        do Angles.load(_sin, 10,
+            100, 99, 95, 89, 81, 71, 59, 45, 31, 16);
+
+        do Angles.load(_sin, 20,
+            0, -16, -31, -45, -59, -71, -81, -89, -95, -99);
+
+        do Angles.load(_sin, 30,
+            -100, -99, -95, -89, -81, -71, -59, -45, -31, -16);
+
+        do Angles.load(_cos, 0,
+            100, 99, 95, 89, 81, 71, 59, 45, 31, 16);
+
+        do Angles.load(_cos, 10,
+            0, -16, -31, -45, -59, -71, -81, -89, -95, -99);
+
+        do Angles.load(_cos, 20,
+            -100, -99, -95, -89, -81, -71, -59, -45, -31, -16);
+
+        do Angles.load(_cos, 30,
+            0, 16, 31, 45, 59, 71, 81, 89, 95, 99);
+
+        return;
+    }
+
+    function void load(
+        Array array, int start,
+        int a, int b, int c, int d, int e,
+        int f, int g, int h, int i, int j
+    ) {
+        let array[start + 0] = a;
+        let array[start + 1] = b;
+        let array[start + 2] = c;
+        let array[start + 3] = d;
+        let array[start + 4] = e;
+        let array[start + 5] = f;
+        let array[start + 6] = g;
+        let array[start + 7] = h;
+        let array[start + 8] = i;
+        let array[start + 9] = j;
+
+        return;
+    }
+}
