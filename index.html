@@ -87,7 +87,102 @@
             "<a href="https://edition.cnn.com/interactive/2021/03/cnnix-steership/">Steer through the Suez Canal</a>",
             reproduced for educational purposes.
         </p>
+        <p>
+            Currently also using this page to test an experimental analytics tracking app developed using Lovable. Watch this space!
+        </p>
     </div>
 </body>
-
+<script>
+(function() {
+  var t = "b8e390b30848160a4b420410e442fdff";
+  var e = "https://quwrkcyyrdjmdfyktuor.supabase.co/functions/v1/track-event";
+  var s = sessionStorage.getItem("sbg_session") || "sbg_" + Math.random().toString(36).substr(2, 9);
+  sessionStorage.setItem("sbg_session", s);
+  
+  function send(data) {
+    navigator.sendBeacon(e, JSON.stringify({...data, tracking_id: t, session_id: s}));
+  }
+  
+  // Track page views
+  var lastUrl = location.href;
+  function trackPageview() {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      send({ event_type: "pageview", page_url: location.href, page_title: document.title });
+    }
+  }
+  send({ event_type: "pageview", page_url: location.href, page_title: document.title });
+  
+  // SPA navigation tracking
+  var origPushState = history.pushState;
+  history.pushState = function() {
+    origPushState.apply(this, arguments);
+    trackPageview();
+  };
+  var origReplaceState = history.replaceState;
+  history.replaceState = function() {
+    origReplaceState.apply(this, arguments);
+    trackPageview();
+  };
+  window.addEventListener("popstate", trackPageview);
+  
+  // Track clicks with rich context
+  document.addEventListener("click", function(ev) {
+    var el = ev.target;
+    if (el.tagName) {
+      // Check for explicit data-action (on element or closest parent)
+      var dataAction = el.getAttribute("data-action") || 
+                       el.closest("[data-action]")?.getAttribute("data-action");
+      var text = el.innerText?.slice(0, 100);
+      var ariaLabel = el.getAttribute("aria-label");
+      var title = el.getAttribute("title");
+      var placeholder = el.getAttribute("placeholder");
+      var btn = el.closest("button");
+      var parentText = btn ? btn.innerText?.slice(0, 100) : el.parentElement?.innerText?.slice(0, 50);
+      var elType = el.type || el.tagName.toLowerCase();
+      if (el.type === "checkbox") elType = "checkbox";
+      
+      send({
+        event_type: "click",
+        page_url: location.href,
+        page_title: document.title,
+        element_text: dataAction || text,
+        element_tag: el.tagName.toLowerCase(),
+        element_aria: ariaLabel,
+        element_title: title,
+        element_placeholder: placeholder,
+        element_type: elType,
+        element_parent_text: parentText
+      });
+    }
+  });
+  
+  var origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    var method = opts?.method || "GET";
+    return origFetch.apply(this, arguments).then(function(res) {
+      try {
+        var u = new URL(url, location.origin);
+        var isExternal = u.origin !== location.origin;
+        var isApi = u.pathname.startsWith("/api") ||
+                    u.pathname.startsWith("/auth") ||
+                    u.pathname.startsWith("/rest") ||
+                    u.pathname.startsWith("/functions") ||
+                    u.pathname.startsWith("/graphql") ||
+                    isExternal;
+        if (isApi) {
+          send({
+            event_type: "api_call",
+            page_url: location.href,
+            api_endpoint: isExternal ? u.href : u.pathname,
+            api_method: method,
+            api_status: res.status
+          });
+        }
+      } catch(e) {}
+      return res;
+    });
+  };
+})();
+</script>
 </html>
